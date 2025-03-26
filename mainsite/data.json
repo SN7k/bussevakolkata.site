@@ -1,0 +1,91 @@
+{
+ "routes": [
+  {
+   "number": "L238",
+   "name": "Champadali Bus Stand - Howrah Station",
+   "frequency": "Every 15-20 minutes",
+   "stops": [
+    "Champadali Bus Stand",
+    "Dak Bunglow",
+    "Madhyamgram",
+    "Michael Nagar",
+    "Air Port No.1,2",
+    "Baguiati",
+    "Dum Dum Park",
+    "Bidhan Nagar Stn.",
+    "Khanna Cinema",
+    "Bidhan Sarani",
+    "Manicktala",
+    "Girish Park",
+    "Burrabazar",
+    "Howrah Station"
+   ],
+   "image": "https://i.ytimg.com/vi/dtfOnLQ7vLU/maxresdefault.jpg"
+  },
+  {
+   "number": "DN-9/1",
+   "name": "Rajchandrapur - Champadali Bus Stand",
+   "frequency": "Every 20-25 minutes",
+   "stops": [
+    "Rajchandrapur",
+    "Bally Halt",
+    "Bally Ghat",
+    "Dakshineswar",
+    "Alambazar",
+    "Dunlop",
+    "Durganagar",
+    "Airport No.3 Gate",
+    "Birati",
+    "Michael Nagar",
+    "Doltola",
+    "Madhyamgram",
+    "Star Mall",
+    "Hridaypur",
+    "Dak Bunglow",
+    "Barasat Champadali Bus Stand"
+   ],
+   "image": "https://scontent.fccu31-1.fna.fbcdn.net/v/t1.6435-9/49786043_1208264849321661_150101320219492352_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=JPUbW4dONNQQ7kNvgHgYQIC&_nc_oc=Adlch2HhWhdOwC6_5w-8QsrIitpzQRBLHpHJYCrMO7NUTVAaQ8VpjPlLsQEE4Cbje3g&_nc_zt=23&_nc_ht=scontent.fccu31-1.fna&_nc_gid=5hOuLRLgOR8rEURzZSqUZQ&oh=00_AYFj0BASTUIvTIYSV2KrHJLFu3F5pg7jCUbkY0nwlbM84A&oe=6803EDE2"
+  },
+  {
+   "number": "44A",
+   "name": "Howrah Station - Saltlake",
+   "frequency": "Every 10-15 minutes",
+   "stops": [
+    "Howrah Stn",
+    "MG Road",
+    "Sealdah",
+    "Acharya Prafulla Chandra Rd",
+    "Aurobinda Setu",
+    "Ultadanga Stn Rd",
+    "V.I.P. Rd",
+    "Saltlake"
+   ],
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSloASfPo8e6bE3S5BiPdYoxPyjb5FTROazvA&s"
+  },
+  {
+   "number": "S12",
+   "name": "Joramandir - Howrah Station",
+   "frequency": "Every 15-20 minutes",
+   "stops": [
+    "Joramandir",
+    "Beleghata Main Rd",
+    "Sealdah",
+    "Moulali",
+    "Lenin Sarani",
+    "Chowringhee Rd",
+    "Rani Rashmoni Avenue",
+    "Old Court House St",
+    "B.B.D. Bag",
+    "Koilaghata St",
+    "Strand Rd",
+    "Subodh Mullick Sq.",
+    "East Ganesh Avenue",
+    "R.N. Mukherjee Rd",
+    "Howrah Stn"
+   ],
+   "image": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS82RPXewmcNqtkhmp-6loI_MtEoxAsJokEmQ&s"
+  }
+ ],
+ "lastUpdated": "2024-03-20",
+ "version": "1.0"
+}
