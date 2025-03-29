@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saved Routes - BusSeva Kolkata</title>
+    <link rel="icon" href="images/favicon.ico" type="image/x-icon">
+    <link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="bus-card.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="nav-overlay"></div>
+    <header>
+        <nav>
+            <div class="logo">
+                <a href="index.html">
+                    <i class="fas fa-bus"></i>
+                    <span>BusSeva Kolkata</span>
+                </a>
+            </div>
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation menu">
+                <div class="hamburger-lines">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </div>
+            </button>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="bus-list.html">Bus Routes</a></li>
+                <li><a href="saved-routes.html" class="active">Saved Routes</a></li>
+                <li><a href="about.html">About</a></li>
+                <li>
+                    <button class="theme-toggle" id="themeToggle">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+    <main class="bus-list-page">
+        <div class="page-header">
+            <h1>Your Saved Routes</h1>
+            <p>Quick access to your favorite bus routes in Kolkata</p>
+        </div>
+
+        <div class="bus-list-section">
+            <div class="bus-grid" id="savedRoutesGrid">
+                <!-- Saved routes will be dynamically inserted here -->
+            </div>
+            
+            <div class="no-saved-routes hidden" id="noSavedRoutes">
+                <i class="fas fa-star"></i>
+                <h2>No Saved Routes Yet</h2>
+                <p>Save your favorite bus routes to access them quickly</p>
+                <a href="bus-list.html" class="feature-btn">Browse Routes</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal for bus details -->
+    <div class="modal" id="busModal">
+        <div class="modal-content">
+            <button class="close-btn" id="closeModal">
+                <i class="fas fa-times"></i>
+            </button>
+            <div class="modal-body" id="modalBody">
+                <!-- Modal content will be dynamically added here -->
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="footer-section">
+            <h3>Connect With Us</h3>
+            <div class="social-links">
+                <a href="https://www.facebook.com/profile.php?id=61552513097713"><i class="fab fa-facebook"></i></a>
+                <a href="https://www.linkedin.com/in/shombhu-nath-karan-0b0b2b2b2/"><i class="fab fa-linkedin"></i></a>
+                <a href="https://github.com/SN7k"><i class="fab fa-github"></i></a>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2025 BusSeva Kolkata. All rights reserved by SN7K.</p>
+        </div>
+    </footer>
+
+    <script src="nav-scroll.js"></script>
+    <script src="theme.js"></script>
+    <script src="saved-routes.js"></script>
+</body>
+</html>
