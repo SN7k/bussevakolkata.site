@@ -48,7 +48,7 @@ document.addEventListener('keydown', (e) => {
 // Fetch bus data
 async function fetchBusData() {
     try {
-        const response = await fetch('https://busseva-backend.onrender.com/api/buses');
+        const response = await fetch('https://busseva-backend-yhzz.onrender.com/api/buses');
         if (!response.ok) {
             throw new Error('Failed to fetch bus data');
         }
@@ -336,7 +336,7 @@ async function removeRoute(busId) {
 // Share route
 async function shareRoute(busId) {
     try {
-        const response = await fetch(`https://busseva-backend.onrender.com/api/buses/${busId}`);
+        const response = await fetch(`https://busseva-backend-yhzz.onrender.com/api/buses/${busId}`);
         if (!response.ok) {
             throw new Error('Failed to load bus details');
         }
@@ -398,7 +398,7 @@ function fallbackShare(shareText) {
 // Show bus details
 async function showBusDetails(busId) {
     try {
-        const response = await fetch(`https://busseva-backend.onrender.com/api/buses/${busId}`);
+        const response = await fetch(`https://busseva-backend-yhzz.onrender.com/api/buses/${busId}`);
         if (!response.ok) {
             throw new Error('Failed to load bus details');
         }

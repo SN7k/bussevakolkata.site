@@ -851,24 +851,6 @@ body:has(.hero) .nav-links a.active {
     animation: pulse 1.5s infinite;
 }
 
-.bus-list-page .search-button {
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
-    border: none;
-    color: var(--accent-color);
-    font-size: 1.2rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.bus-list-page .search-button:hover {
-    color: var(--accent-hover);
-    transform: translateY(-50%) scale(1.1);
-}
-
 /* Premium Bus Card Styling - Modern Glass Morphism Design */
 .bus-grid {
     display: grid;
@@ -1005,7 +987,7 @@ body:has(.hero) .nav-links a.active {
     flex-wrap: wrap;
     gap: 1rem;
     margin-bottom: 1.2rem;
-    padding-bottom: 1.2rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid rgba(0, 0, 0, 0.06);
     color: var(--text-secondary);
 }
@@ -1813,6 +1795,7 @@ footer {
 
     .hero p {
         font-size: 1rem;
+        padding: 0 1rem;
     }
 
     .search-section {
@@ -1945,12 +1928,14 @@ footer {
         padding: 0.4rem 0.6rem;
         font-size: 0.8rem;
         min-height: 32px;
-        flex: 1;
-        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
     }
 
     .bus-actions .feature-btn i {
-        margin-right: 0.2rem;
+        font-size: 0.8rem;
     }
 
     .remove-btn {
@@ -1982,79 +1967,207 @@ footer {
         gap: 0.8rem;
         padding: 0.5rem;
     }
-    
+
     .bus-card {
         padding: 0.8rem;
         gap: 0.5rem;
         margin-bottom: 0.5rem;
         border-radius: 8px;
     }
-    
+
     .bus-profile-pic {
         width: 100%;
         height: 120px;
+        border-radius: 6px;
+        font-size: 1.4rem;
     }
-    
+
     .bus-profile-pic::after {
         width: 25px;
         height: 25px;
         bottom: -12px;
         border-width: 2px;
     }
-    
+
     .bus-info {
         padding: 0.5rem;
         margin-top: -10px;
         border-radius: 10px 10px 6px 6px;
     }
-    
+
     .bus-info h3 {
         font-size: 1rem;
     }
-    
+
     .bus-info p {
         font-size: 0.85rem;
     }
-    
+
     .bus-meta {
         flex-wrap: wrap;
         gap: 0.5rem;
         margin-bottom: 0.8rem;
         padding-bottom: 0.8rem;
     }
-    
+
     .bus-meta span {
         font-size: 0.75rem;
-        padding: 0.2rem 0.3rem;
+        padding: 0.2rem 0.4rem;
     }
-    
+
     .bus-meta span i {
         font-size: 0.75rem;
     }
-    
+
+    .bus-actions {
+        gap: 0.4rem;
+        margin-top: 0.4rem;
+    }
+
+    .bus-actions .feature-btn {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.75rem;
+        min-height: 30px;
+    }
+
+    .bus-actions .feature-btn i {
+        font-size: 0.75rem;
+    }
+
+    .modal .bus-profile-pic.large {
+        width: 60px;
+        height: 60px;
+    }
+}
+
+@media (max-width: 480px) {
+    .logo {
+        font-size: 1.2rem;
+    }
+
+    .nav-links {
+        width: 250px;
+        padding: 4rem 1.5rem 1.5rem;
+    }
+
+    .hero h1 {
+        font-size: 1.5rem;
+    }
+
+    .hero p {
+        font-size: 0.9rem;
+    }
+
+    .search-section h2 {
+        font-size: 1.3rem;
+    }
+
+    .feature-card {
+        padding: 1rem;
+    }
+
+    .feature-card i {
+        font-size: 2rem;
+    }
+
+    .feature-card h3 {
+        font-size: 1.2rem;
+    }
+
+    .footer-section h3 {
+        font-size: 0.9rem;
+    }
+
+    .footer-section ul li {
+        font-size: 0.75rem;
+    }
+
+    .social-links {
+        gap: 0.5rem;
+    }
+
+    .social-links a {
+        font-size: 1.3rem;
+        padding: 0.4rem;
+    }
+
+    .footer-bottom {
+        font-size: 0.65rem;
+        margin-top: 0.75rem;
+        padding-top: 0.5rem;
+    }
+
+    .footer-content {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .bus-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 0.6rem;
+        padding: 0.4rem;
+    }
+
+    .bus-card {
+        padding: 0.6rem;
+    }
+
+    .bus-profile-pic {
+        width: 40px;
+        height: 40px;
+    }
+
+    .bus-profile-pic::after {
+        width: 20px;
+        height: 20px;
+        bottom: -10px;
+        border-width: 2px;
+    }
+
+    .bus-info {
+        padding: 0.4rem;
+        margin-top: -8px;
+        border-radius: 8px 8px 4px 4px;
+    }
+
+    .bus-info h3 {
+        font-size: 0.9rem;
+    }
+
+    .bus-info p {
+        font-size: 0.8rem;
+    }
+
+    .bus-meta span {
+        font-size: 0.7rem;
+        margin-right: 0.5rem;
+    }
+
     .bus-actions {
         flex-direction: row;
         flex-wrap: nowrap;
         gap: 0.4rem;
     }
-    
+
     .bus-actions .feature-btn {
         padding: 0.25rem 0.4rem;
         font-size: 0.7rem;
         min-height: 28px;
+        flex: 1;
+        white-space: nowrap;
     }
-    
+
     .bus-actions .feature-btn i {
         margin-right: 0.2rem;
     }
-    
+
     .bus-type-badge {
         top: 8px;
         right: 8px;
         padding: 0.2rem 0.4rem;
         font-size: 0.65rem;
     }
-    
+
     .bus-profile-pic span {
         bottom: 8px;
         left: 8px;
@@ -2300,37 +2413,11 @@ footer {
 
 /* Modal styles for bus images */
 .modal .bus-profile-pic.large {
-    width: 120px;
-    height: 120px;
+    width: 80px;
+    height: 80px;
     border-radius: 50%;
     margin-right: 1rem;
     border: 4px solid var(--bg-primary);
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    background-size: cover !important;
-    background-position: center !important;
-}
-
-.modal .bus-profile-pic.large i {
-    font-size: 3rem;
-    color: rgba(255, 255, 255, 0.7);
-    z-index: 2;
-}
-
-.bus-name-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    padding: 5px;
-    font-size: 0.8rem;
-    text-align: center;
-    z-index: 3;
 }
 
 @media (max-width: 768px) {
@@ -2403,14 +2490,9 @@ footer {
 }
 
 .bus-details {
-    max-width: 100%;
-    background-color: var(--bg-secondary);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.bus-title {
-    margin-bottom: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
 }
 
 /* Enhanced Bus Header in Modal */
@@ -3165,134 +3247,10 @@ footer {
     }
 }
 
-/* Bus thumbnail in modal */
-.bus-thumbnail {
-    width: 120px;
-    height: 90px;
-    margin-right: 1rem;
-    border-radius: 8px;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    background-size: cover !important;
-    background-position: center !important;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.bus-thumbnail.full-width {
-    width: 100%;
-    height: 180px;
-    margin: 0 0 1rem 0;
-    border-radius: 8px 8px 0 0;
-}
-
-.bus-thumbnail i {
-    font-size: 2.5rem;
-    color: rgba(255, 255, 255, 0.7);
-    z-index: 2;
-}
-
-.bus-thumbnail.full-width i {
-    font-size: 4rem;
-}
-
-.bus-thumbnail .bus-type-badge {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    background-color: var(--accent-color);
-    color: white;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 0.7rem;
-    font-weight: bold;
-    z-index: 3;
-}
-
-.bus-info-container {
-    padding: 0 1rem 1rem;
-}
-
-.bus-details {
-    max-width: 100%;
-    background-color: var(--bg-secondary);
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.bus-title {
-    margin-bottom: 1rem;
-}
-
-@media (max-width: 768px) {
-    .bus-thumbnail {
-        width: 100px;
-        height: 75px;
-    }
-    
-    .bus-thumbnail.full-width {
-        height: 150px;
-    }
-    
-    .bus-thumbnail i {
-        font-size: 2rem;
-    }
-    
-    .bus-thumbnail.full-width i {
-        font-size: 3rem;
-    }
-    
-    .bus-thumbnail .bus-type-badge {
-        padding: 2px 6px;
-        font-size: 0.6rem;
-    }
-    
-    .bus-info-container {
-        padding: 0 0.75rem 0.75rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .bus-thumbnail {
-        width: 80px;
-        height: 60px;
-    }
-    
-    .bus-thumbnail.full-width {
-        height: 120px;
-    }
-    
-    .bus-thumbnail i {
-        font-size: 1.5rem;
-    }
-    
-    .bus-thumbnail.full-width i {
-        font-size: 2.5rem;
-    }
-    
-    .bus-thumbnail .bus-type-badge {
-        padding: 2px 4px;
-        font-size: 0.5rem;
-    }
-    
-    .bus-info-container {
-        padding: 0 0.5rem 0.5rem;
-    }
-}
-
 /* Buy Me a Coffee Button Styles */
 .buy-me-coffee {
     text-align: center;
     padding: 20px 0;
-    margin-top: 20px;
-    background-color: var(--bg-secondary);
-    border-radius: 8px;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .coffee-btn {
@@ -3312,7 +3270,7 @@ footer {
 .coffee-btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-    background-color: #f4d31b;
+    background-color: #FFE44D;
 }
 
 .coffee-btn i {
@@ -3327,229 +3285,4 @@ footer {
 
 [data-theme="dark"] .coffee-btn:hover {
     background-color: #FFE44D;
-}
-
-.support-text {
-    margin-bottom: 15px;
-    color: var(--text-primary);
-    font-size: 1.1rem;
-}
-
-.payment-options {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    flex-wrap: wrap;
-}
-
-.phonepe-btn {
-    background-color: #5f259f;
-    color: white;
-}
-
-.phonepe-btn:hover {
-    background-color: #4a1d7a;
-}
-
-.coffee-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-    background-color: #f4d31b;
-}
-
-.coffee-btn i {
-    font-size: 1.2em;
-}
-
-/* Dark mode support */
-[data-theme="dark"] .coffee-btn {
-    background-color: #FFDD00;
-    color: #000;
-}
-
-[data-theme="dark"] .coffee-btn:hover {
-    background-color: #FFE44D;
-}
-
-[data-theme="dark"] .phonepe-btn {
-    background-color: #5f259f;
-    color: white;
-}
-
-[data-theme="dark"] .phonepe-btn:hover {
-    background-color: #4a1d7a;
-}
-
-@media (max-width: 480px) {
-    .buy-me-coffee {
-        padding: 15px;
-        margin: 15px;
-    }
-    
-    .support-text {
-        font-size: 0.9rem;
-    }
-    
-    .coffee-btn {
-        padding: 10px 20px;
-        font-size: 0.9rem;
-    }
-}
-
-/* Search Recommendations Styles */
-.recommendations-container {
-    position: absolute;
-    width: 100%;
-    max-height: 250px;
-    overflow-y: auto;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 0 0 8px 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    margin-top: 2px;
-}
-
-.recommendation-item {
-    padding: 10px 15px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    color: var(--text-primary);
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.recommendation-item:last-child {
-    border-bottom: none;
-}
-
-.recommendation-item:hover {
-    background-color: rgba(52, 152, 219, 0.1);
-}
-
-/* Make sure search box has relative positioning for absolute positioning of recommendations */
-.search-box {
-    position: relative;
-}
-
-/* Suggestions styling */
-.suggestions {
-    margin-top: 1rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.suggestions p {
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-}
-
-.suggestion-btn {
-    background-color: var(--accent-color);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.5rem 1rem;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.2s ease;
-    margin: 0.2rem;
-}
-
-.suggestion-btn:hover {
-    background-color: var(--accent-hover);
-    transform: translateY(-2px);
-}
-
-.suggestion-text {
-    margin-top: 0.5rem;
-    color: var(--text-secondary);
-    font-style: italic;
-}
-
-.no-results {
-    text-align: center;
-    padding: 2rem;
-    color: var(--text-primary);
-}
-
-.no-results i {
-    font-size: 2.5rem;
-    color: var(--accent-color);
-    margin-bottom: 1rem;
-}
-
-.no-results p {
-    margin-bottom: 1rem;
-}
-
-/* Improve recommendations styling */
-.recommendations-container {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-top: none;
-    border-radius: 0 0 8px 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    z-index: 10;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-.recommendation-item {
-    padding: 0.8rem 1rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    color: var(--text-primary);
-}
-
-.recommendation-item:hover {
-    background-color: rgba(52, 152, 219, 0.1);
-}
-
-/* Improve search results styling */
-.results-header {
-    margin-bottom: 1.5rem;
-    text-align: center;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.results-header h2 {
-    color: var(--accent-color);
-    margin-bottom: 0.5rem;
-}
-
-.results-header p {
-    color: var(--text-secondary);
-}
-
-.search-results {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1.5rem;
-}
-
-@media (max-width: 768px) {
-    .search-results {
-        grid-template-columns: 1fr;
-    }
-}
-
-.search-note {
-    color: #e67e22;
-    font-size: 0.9rem;
-    font-style: italic;
-    margin-top: 0.5rem;
-}
-
-/* Dark mode adjustment */
-[data-theme="dark"] .search-note {
-    color: #f39c12;
 }
