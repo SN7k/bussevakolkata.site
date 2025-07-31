@@ -1,9 +1,20 @@
-// DOM Elements
-const busGrid = document.getElementById('busGrid');
-const busModal = document.getElementById('busModal');
-const modalBody = document.getElementById('modalBody');
-const closeModal = document.getElementById('closeModal');
-const busSearch = document.getElementById('busSearch');
+// Performance optimizations and caching
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const VIRTUAL_SCROLL_THRESHOLD = 50; // Show virtual scrolling for lists > 50 items
+let busCache = new Map();
+let imageCache = new Map();
+let isLoading = false;
+
+// DOM Elements - cached for better performance
+const elements = {
+    busGrid: document.getElementById('busGrid'),
+    busModal: document.getElementById('busModal'),
+    modalBody: document.getElementById('modalBody'),
+    closeModal: document.getElementById('closeModal'),
+    busSearch: document.getElementById('busSearch')
+};
+
+// Create load more button
 const loadMoreBtn = document.createElement('button');
 loadMoreBtn.className = 'load-more-btn';
 loadMoreBtn.textContent = 'Load More Buses';
@@ -12,9 +23,27 @@ loadMoreBtn.style.display = 'none';
 let allBuses = []; // Store all buses for filtering
 let currentPage = 1;
 const busesPerPage = 12;
-let isLoading = false;
+let displayedBuses = 0;
 
-// Create bus card
+// Intersection Observer for lazy loading images
+const imageObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const img = entry.target;
+            if (img.dataset.src) {
+                img.src = img.dataset.src;
+                img.classList.remove('lazy');
+                img.classList.add('loaded');
+                imageObserver.unobserve(img);
+            }
+        }
+    });
+}, {
+    rootMargin: '50px',
+    threshold: 0.1
+});
+
+// Optimized bus card creation with lazy loading
 function createBusCard(bus) {
     try {
         // Create card container
@@ -33,7 +62,7 @@ function createBusCard(bus) {
             card.appendChild(featuredBadge);
         }
         
-        // Create bus image section
+        // Create bus image section with lazy loading
         const busImage = document.createElement('div');
         busImage.className = 'bus-profile-pic';
         
@@ -41,27 +70,27 @@ function createBusCard(bus) {
         const busColor = getBusColorByType(bus.type || 'regular');
         busImage.style.background = busColor;
         
-        // Handle image loading with proper error handling
+        // Handle image loading with proper error handling and lazy loading
         if (bus.imageUrl) {
-            // Create a new image to test loading
-            const img = new Image();
+            const img = document.createElement('img');
+            img.className = 'lazy';
+            img.dataset.src = bus.imageUrl;
+            img.alt = bus.name;
+            img.loading = 'lazy';
             
-            // Set up event handlers
-            img.onload = () => {
-                busImage.style.backgroundImage = `url('${bus.imageUrl}')`;
-                busImage.style.backgroundSize = 'cover';
-                busImage.style.backgroundPosition = 'center';
-                card.classList.remove('loading'); // Remove loading state when image loads
+            // Add error handling
+            img.onerror = () => {
+                console.log(`Failed to load image for bus: ${bus.name}`);
+                card.classList.remove('loading');
+                // Keep the gradient background if image fails to load
             };
             
-            img.onerror = () => {
-                // Keep the gradient background if image fails to load
-                console.log(`Failed to load image for bus: ${bus.name}`);
+            img.onload = () => {
                 card.classList.remove('loading');
             };
             
-            // Start loading the image
-            img.src = bus.imageUrl;
+            imageObserver.observe(img);
+            busImage.appendChild(img);
         } else {
             // If no image URL, use a default bus icon as background
             const busIcon = document.createElement('i');
@@ -98,95 +127,123 @@ function createBusCard(bus) {
         
         // Create tags based on bus features
         const scheduleTag = document.createElement('span');
-        scheduleTag.textContent = bus.schedule || 'Every 15-20 minutes';
+        scheduleTag.innerHTML = `<i class="fas fa-clock"></i> ${bus.schedule || 'Schedule N/A'}`;
         busMeta.appendChild(scheduleTag);
         
+        const fareTag = document.createElement('span');
+        fareTag.innerHTML = `<i class="fas fa-rupee-sign"></i> ${bus.fare || 'Fare N/A'}`;
+        busMeta.appendChild(fareTag);
+        
         const stopsTag = document.createElement('span');
-        stopsTag.textContent = `${bus.stops ? bus.stops.length : 0} stops`;
+        stopsTag.innerHTML = `<i class="fas fa-map-marker-alt"></i> ${bus.totalStops || 'Stops N/A'}`;
         busMeta.appendChild(stopsTag);
         
+        // Add bus type badge if available
         if (bus.type) {
-            const typeTag = document.createElement('span');
-            typeTag.textContent = getBusTypeLabel(bus.type);
-            busMeta.appendChild(typeTag);
+            const typeBadge = document.createElement('span');
+            typeBadge.className = 'bus-type-badge';
+            typeBadge.textContent = getBusTypeLabel(bus.type);
+            busMeta.appendChild(typeBadge);
         }
         
-        // Assemble the bus info section
+        // Append elements to bus info
         busInfo.appendChild(busTitle);
         busInfo.appendChild(busRoute);
         busInfo.appendChild(busMeta);
         
-        // Add click event to the entire card to view details
-        card.addEventListener('click', () => {
-            showBusDetails(bus._id);
-        });
+        // Create bus actions
+        const busActions = document.createElement('div');
+        busActions.className = 'bus-actions';
         
-        // Add hover effect class for better UX
-        card.addEventListener('mouseenter', () => {
-            card.classList.add('hover');
-        });
+        // View route button
+        const viewBtn = document.createElement('button');
+        viewBtn.className = 'feature-btn view-route';
+        viewBtn.innerHTML = '<i class="fas fa-eye"></i> View Details';
+        viewBtn.onclick = () => showBusDetails(bus._id);
+        busActions.appendChild(viewBtn);
         
-        card.addEventListener('mouseleave', () => {
-            card.classList.remove('hover');
-        });
+        // Save route button
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'feature-btn save-route';
+        saveBtn.innerHTML = isSaved(bus._id) ? 
+            '<i class="fas fa-star"></i> Remove from Saved' : 
+            '<i class="fas fa-star"></i> Save Route';
+        saveBtn.onclick = (e) => toggleSaveRoute(bus._id, e);
+        busActions.appendChild(saveBtn);
         
-        // Add animation delay for staggered appearance
-        const index = Array.from(busGrid.children).length;
-        card.style.animationDelay = `${index * 0.1}s`;
+        // Share route button
+        const shareBtn = document.createElement('button');
+        shareBtn.className = 'feature-btn share-btn';
+        shareBtn.innerHTML = '<i class="fas fa-share"></i> Share';
+        shareBtn.onclick = (e) => shareRoute(bus._id, e);
+        busActions.appendChild(shareBtn);
         
-        // Assemble the card
+        // Append all sections to card
         card.appendChild(busImage);
         card.appendChild(busInfo);
+        card.appendChild(busActions);
         
         return card;
     } catch (error) {
-        console.error('Error creating bus card:', error, bus);
+        console.error('Error creating bus card:', error);
         return null;
     }
 }
 
-// Helper function to get bus type label
+// Optimized bus type label function with caching
+const typeLabelCache = new Map();
 function getBusTypeLabel(type) {
-    if (!type) return 'Regular';
-    
-    if (type.toLowerCase().includes('ac')) {
-        return 'AC';
-    } else if (type.toLowerCase().includes('mini')) {
-        return 'Mini';
-    } else if (type.toLowerCase().includes('express')) {
-        return 'Express';
-    } else {
-        return 'Regular';
+    if (typeLabelCache.has(type)) {
+        return typeLabelCache.get(type);
     }
+    
+    let label = 'Regular';
+    if (type && typeof type === 'string') {
+        const lowerType = type.toLowerCase();
+        if (lowerType.includes('ac')) label = 'AC';
+        else if (lowerType.includes('express')) label = 'Express';
+        else if (lowerType.includes('local')) label = 'Local';
+        else if (lowerType.includes('premium')) label = 'Premium';
+        else label = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+    }
+    
+    typeLabelCache.set(type, label);
+    return label;
 }
 
-// Helper function to get color based on bus type
+// Optimized bus color function with caching
+const colorCache = new Map();
 function getBusColorByType(type) {
-    if (!type) return 'linear-gradient(135deg, #4b6cb7, #182848)';
-    
-    if (type.toLowerCase().includes('ac')) {
-        return 'linear-gradient(135deg, #1e3c72, #2a5298)'; // Blue gradient for AC
-    } else if (type.toLowerCase().includes('mini')) {
-        return 'linear-gradient(135deg, #8e44ad, #9b59b6)'; // Purple gradient for Mini
-    } else if (type.toLowerCase().includes('express')) {
-        return 'linear-gradient(135deg, #c0392b, #e74c3c)'; // Red gradient for Express
-    } else {
-        return 'linear-gradient(135deg, #2c3e50, #4ca1af)'; // Teal gradient for Regular
+    if (colorCache.has(type)) {
+        return colorCache.get(type);
     }
+    
+    let color = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+    if (type && typeof type === 'string') {
+        const lowerType = type.toLowerCase();
+        if (lowerType.includes('ac')) {
+            color = 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)';
+        } else if (lowerType.includes('express')) {
+            color = 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)';
+        } else if (lowerType.includes('premium')) {
+            color = 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)';
+        } else if (lowerType.includes('local')) {
+            color = 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)';
+        }
+    }
+    
+    colorCache.set(type, color);
+    return color;
 }
 
-// Check if a route is saved
+// Optimized save status check
 function isSaved(busId) {
     const favorites = JSON.parse(localStorage.getItem('favoriteRoutes') || '[]');
     return favorites.includes(busId);
 }
 
-// Toggle save route
+// Optimized save route toggle
 function toggleSaveRoute(busId, event) {
-    if (event) {
-        event.stopPropagation(); // Prevent card click event
-    }
-    
     let favorites = JSON.parse(localStorage.getItem('favoriteRoutes') || '[]');
     const isFavorite = favorites.includes(busId);
     
@@ -209,48 +266,26 @@ function toggleSaveRoute(busId, event) {
     }
 }
 
-// Share route
+// Optimized share route function
 async function shareRoute(busId, event) {
-    if (event) {
-        event.stopPropagation(); // Prevent card click event
-    }
-    
     try {
-        const response = await fetch(`https://busseva-backend-yhzz.onrender.com/api/buses/${busId}`);
-        if (!response.ok) {
-            throw new Error('Failed to load bus details');
-        }
-        const bus = await response.json();
-        
+        const bus = allBuses.find(b => b._id === busId);
         if (!bus) {
-            console.error('Bus not found:', busId);
-            showToast('Unable to find bus information', 'error');
+            showToast('Bus information not found', 'error');
             return;
         }
-
-        // Create share text
-        const shareText = `${bus.name}\n\n` +
-            `Route: ${bus.route || 'Not available'}\n` +
-            `Schedule: ${bus.schedule || 'Not available'}\n` +
-            `Fare: ${bus.fare || 'Not available'}\n` +
-            `Stops: ${bus.stops ? bus.stops.join(' → ') : 'Not available'}\n\n` +
-            `View more details at: ${window.location.origin}/bus-list.html?bus=${bus._id}`;
-
-        // Check if Web Share API is available
+        
+        const shareText = `Check out this bus route: ${bus.name} - ${bus.route}`;
+        const shareUrl = `${window.location.origin}/bus-list.html?bus=${busId}`;
+        
         if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: `${bus.name} Route Details`,
-                    text: shareText,
-                    url: `${window.location.origin}/bus-list.html?bus=${bus._id}`
-                });
-            } catch (error) {
-                if (error.name !== 'AbortError') {
-                    fallbackShare(shareText);
-                }
-            }
+            await navigator.share({
+                title: 'BusSeva Kolkata - Bus Route',
+                text: shareText,
+                url: shareUrl
+            });
         } else {
-            fallbackShare(shareText);
+            fallbackShare(shareText + '\n' + shareUrl);
         }
     } catch (error) {
         console.error('Error sharing route:', error);
@@ -258,43 +293,96 @@ async function shareRoute(busId, event) {
     }
 }
 
-// Fallback share method
+// Fallback share function
 function fallbackShare(shareText) {
-    const textarea = document.createElement('textarea');
-    textarea.value = shareText;
-    document.body.appendChild(textarea);
-    textarea.select();
-    
-    try {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(shareText).then(() => {
+            showToast('Route link copied to clipboard!');
+        }).catch(() => {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = shareText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showToast('Route link copied to clipboard!');
+        });
+    } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = shareText;
+        document.body.appendChild(textArea);
+        textArea.select();
         document.execCommand('copy');
-        showToast('Route details copied to clipboard!');
-    } catch (err) {
-        showToast('Failed to copy route details', 'error');
+        document.body.removeChild(textArea);
+        showToast('Route link copied to clipboard!');
     }
-    
-    document.body.removeChild(textarea);
 }
 
-// Show toast message
+// Optimized toast message with queue management
+let toastQueue = [];
+let isShowingToast = false;
+
 function showToast(message, type = 'success') {
+    toastQueue.push({ message, type });
+    
+    if (!isShowingToast) {
+        showNextToast();
+    }
+}
+
+function showNextToast() {
+    if (toastQueue.length === 0) {
+        isShowingToast = false;
+        return;
+    }
+    
+    isShowingToast = true;
+    const { message, type } = toastQueue.shift();
+    
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
     
     document.body.appendChild(toast);
     
+    // Use requestAnimationFrame for smooth animation
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+    
     setTimeout(() => {
-        toast.remove();
+        toast.classList.remove('show');
+        setTimeout(() => {
+            toast.remove();
+            showNextToast();
+        }, 300);
     }, 3000);
 }
 
-// Show bus details
+// Optimized bus details display with caching
 async function showBusDetails(busId) {
+    // Check cache first
+    if (busCache.has(busId)) {
+        const cached = busCache.get(busId);
+        if (Date.now() - cached.timestamp < CACHE_DURATION) {
+            displayBusModal(cached.data);
+            return;
+        }
+    }
+
     try {
-        const response = await fetch(`https://busseva-backend-yhzz.onrender.com/api/buses/${busId}`);
+        const response = await fetch(`https://busseva-backend-yhzz.onrender.com/api/buses/${busId}`, {
+            headers: {
+                'Cache-Control': 'max-age=300'
+            }
+        });
+        
         if (!response.ok) {
             throw new Error('Failed to load bus details');
         }
+        
         const bus = await response.json();
         
         if (!bus) {
@@ -302,7 +390,26 @@ async function showBusDetails(busId) {
             return;
         }
 
-        modalBody.innerHTML = `
+        // Cache the result
+        busCache.set(busId, {
+            data: bus,
+            timestamp: Date.now()
+        });
+
+        displayBusModal(bus);
+    } catch (error) {
+        console.error('Error loading bus details:', error);
+        showToast('Unable to load bus details. Please try again later.', 'error');
+    }
+}
+
+// Display bus modal with optimized rendering
+function displayBusModal(bus) {
+    const modalContent = `
+        <div class="modal-header">
+            <h2>${bus.name}</h2>
+        </div>
+        <div class="modal-body">
             <div class="bus-details">
                 <div class="bus-header">
                     <div class="bus-profile-pic large" style="background-image: url('${bus.imageUrl || '/images/default-bus.jpg'}')">
@@ -310,184 +417,217 @@ async function showBusDetails(busId) {
                     </div>
                     <div class="bus-title">
                         <h3>${bus.name}</h3>
-                        <p>${bus.route}</p>
+                        <p>${bus.route || 'Route not available'}</p>
                     </div>
                 </div>
                 
                 <div class="bus-schedule">
-                    <h4><i class="fas fa-clock"></i> Schedule</h4>
+                    <h4><i class="fas fa-clock"></i> Schedule & Fare</h4>
                     <div class="schedule-grid">
                         <div class="schedule-item">
-                            <span class="label">Schedule</span>
+                            <span class="label">Schedule:</span>
                             <span class="value">${bus.schedule || 'Not available'}</span>
                         </div>
                         <div class="schedule-item">
-                            <span class="label">Fare</span>
+                            <span class="label">Fare:</span>
                             <span class="value">${bus.fare || 'Not available'}</span>
+                        </div>
+                        <div class="schedule-item">
+                            <span class="label">Total Stops:</span>
+                            <span class="value">${bus.totalStops || 'Not available'}</span>
                         </div>
                     </div>
                 </div>
                 
                 <div class="bus-stops">
-                    <h4><i class="fas fa-map-marker-alt"></i> Bus Stops</h4>
+                    <h4><i class="fas fa-map-marker-alt"></i> Route Stops</h4>
                     <div class="stops-list">
                         ${bus.stops ? bus.stops.map((stop, index) => `
                             <div class="stop-item">
-                                <div class="stop-number">${index + 1}</div>
-                                <div class="stop-name">${stop}</div>
+                                <span class="stop-number">${index + 1}</span>
+                                <span class="stop-name">${stop}</span>
                             </div>
                         `).join('') : '<p>No stops information available</p>'}
                     </div>
                 </div>
-
-                <div class="modal-actions">
-                    <button class="feature-btn save-route" onclick="toggleSaveRoute('${bus._id}', event)">
-                        <i class="fas fa-star"></i> ${isSaved(bus._id) ? 'Remove from Saved' : 'Save Route'}
-                    </button>
-                    <button class="feature-btn share-btn" onclick="shareRoute('${bus._id}', event)">
-                        <i class="fas fa-share"></i> Share Route
-                    </button>
-                </div>
             </div>
-        `;
-        showModal();
-    } catch (error) {
-        console.error('Error loading bus details:', error);
-        showToast('Unable to load bus details', 'error');
+            
+            <div class="modal-actions">
+                <button class="feature-btn save-route" onclick="toggleSaveRoute('${bus._id}', event)">
+                    ${isSaved(bus._id) ? '<i class="fas fa-star"></i> Remove from Saved' : '<i class="fas fa-star"></i> Save Route'}
+                </button>
+                <button class="feature-btn share-btn" onclick="shareRoute('${bus._id}', event)">
+                    <i class="fas fa-share"></i> Share Route
+                </button>
+            </div>
+        </div>
+    `;
+    
+    elements.modalBody.innerHTML = modalContent;
+    showModal();
+}
+
+// Optimized bus filtering with debouncing
+let filterTimeout = null;
+function filterBuses(searchTerm) {
+    if (filterTimeout) {
+        clearTimeout(filterTimeout);
+    }
+    
+    filterTimeout = setTimeout(() => {
+        const normalizedSearch = searchTerm.toLowerCase().trim();
+        
+        if (!normalizedSearch) {
+            displayBuses(allBuses);
+            return;
+        }
+        
+        const filteredBuses = allBuses.filter(bus => {
+            const nameMatch = bus.name && bus.name.toLowerCase().includes(normalizedSearch);
+            const routeMatch = bus.route && bus.route.toLowerCase().includes(normalizedSearch);
+            const stopsMatch = bus.stops && bus.stops.some(stop => 
+                stop.toLowerCase().includes(normalizedSearch)
+            );
+            
+            return nameMatch || routeMatch || stopsMatch;
+        });
+        
+        displayBuses(filteredBuses);
+    }, 300);
+}
+
+// Show modal with optimized animation
+function showModal() {
+    elements.busModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Focus management for accessibility
+    const firstFocusable = elements.busModal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    if (firstFocusable) {
+        firstFocusable.focus();
     }
 }
 
-// Filter buses based on search term
-function filterBuses(searchTerm) {
-    const filteredBuses = allBuses.filter(bus => {
-        const searchLower = searchTerm.toLowerCase();
-        return (
-            bus.name.toLowerCase().includes(searchLower) ||
-            (bus.route && bus.route.toLowerCase().includes(searchLower)) ||
-            (bus.stops && bus.stops.some(stop => stop.toLowerCase().includes(searchLower)))
-        );
-    });
+// Hide modal with optimized animation
+function hideModal() {
+    elements.busModal.classList.remove('active');
+    document.body.style.overflow = '';
+    
+    // Return focus to the element that opened the modal
+    const lastFocused = document.querySelector('[data-last-focused]');
+    if (lastFocused) {
+        lastFocused.focus();
+        lastFocused.removeAttribute('data-last-focused');
+    }
+}
 
-    // Clear existing content
-    busGrid.innerHTML = '';
-    currentPage = 1;
-
-    if (filteredBuses.length === 0) {
-        busGrid.innerHTML = `
+// Optimized bus display with virtual scrolling for large lists
+function displayBuses(buses) {
+    elements.busGrid.innerHTML = '';
+    
+    if (buses.length === 0) {
+        elements.busGrid.innerHTML = `
             <div class="no-results">
                 <i class="fas fa-search"></i>
-                <p>No buses found matching "${searchTerm}"</p>
+                <h2>No buses found</h2>
+                <p>Try adjusting your search criteria</p>
             </div>
         `;
-        loadMoreBtn.style.display = 'none';
         return;
     }
-
-    // Add filtered bus cards
-    displayBuses();
     
-    // Show/hide load more button based on filtered results
-    if (filteredBuses.length > busesPerPage) {
-        loadMoreBtn.style.display = 'block';
+    // Use virtual scrolling for large lists
+    if (buses.length > VIRTUAL_SCROLL_THRESHOLD) {
+        displayBusesVirtual(buses);
     } else {
-        loadMoreBtn.style.display = 'none';
+        displayBusesNormal(buses);
     }
 }
 
-// Show modal
-function showModal() {
-    busModal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-}
-
-// Hide modal
-function hideModal() {
-    busModal.classList.remove('active');
-    document.body.style.overflow = '';
-}
-
-// Close modal when clicking close button
-closeModal.addEventListener('click', hideModal);
-
-// Close modal when clicking outside
-window.addEventListener('click', (e) => {
-    if (e.target === busModal) {
-        hideModal();
-    }
-});
-
-// Search input event listener
-busSearch.addEventListener('input', (e) => {
-    filterBuses(e.target.value);
-});
-
-// Initialize
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        // Show loading state
-        busGrid.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i></div>';
-        
-        const response = await fetch('https://busseva-backend-yhzz.onrender.com/api/buses');
-        if (!response.ok) {
-            throw new Error('Failed to fetch bus data');
-        }
-        const buses = await response.json();
-        
-        // Store all buses for filtering
-        allBuses = buses;
-        
-        // Clear loading state
-        busGrid.innerHTML = '';
-        
-        // Add initial bus cards
-        displayBuses();
-        
-        // Add load more button if there are more buses
-        if (allBuses.length > busesPerPage) {
-            busGrid.parentNode.appendChild(loadMoreBtn);
-            loadMoreBtn.style.display = 'block';
-            loadMoreBtn.addEventListener('click', loadMoreBuses);
-        }
-        
-        // Check URL parameters for bus details
-        const urlParams = new URLSearchParams(window.location.search);
-        const busId = urlParams.get('bus');
-        const showModalParam = urlParams.get('showModal') === 'true';
-
-        if (busId && showModalParam) {
-            showBusDetails(busId);
-        }
-    } catch (error) {
-        console.error('Error loading bus data:', error);
-        busGrid.innerHTML = `
-            <div class="error-message">
-                <i class="fas fa-exclamation-circle"></i>
-                <p>Error loading bus data. Please try again later.</p>
-            </div>
-        `;
-    }
-});
-
-// Display buses with pagination
-function displayBuses() {
-    const startIndex = 0;
-    const endIndex = currentPage * busesPerPage;
-    const busesToShow = allBuses.slice(startIndex, endIndex);
+// Normal display for smaller lists
+function displayBusesNormal(buses) {
+    const fragment = document.createDocumentFragment();
     
-    busesToShow.forEach(bus => {
+    buses.forEach((bus, index) => {
         const card = createBusCard(bus);
         if (card) {
-            busGrid.appendChild(card);
+            // Stagger animation for better performance
+            card.style.animationDelay = `${index * 50}ms`;
+            fragment.appendChild(card);
         }
     });
     
-    // Hide load more button if all buses are displayed
-    if (endIndex >= allBuses.length) {
-        loadMoreBtn.style.display = 'none';
+    elements.busGrid.appendChild(fragment);
+}
+
+// Virtual scrolling for large lists
+function displayBusesVirtual(buses) {
+    const visibleCount = Math.ceil(window.innerHeight / 200); // Approximate card height
+    const visibleBuses = buses.slice(0, visibleCount);
+    
+    const fragment = document.createDocumentFragment();
+    
+    visibleBuses.forEach((bus, index) => {
+        const card = createBusCard(bus);
+        if (card) {
+            card.style.animationDelay = `${index * 50}ms`;
+            fragment.appendChild(card);
+        }
+    });
+    
+    elements.busGrid.appendChild(fragment);
+    
+    // Add scroll listener for virtual scrolling
+    let scrollListener = null;
+    if (!scrollListener) {
+        scrollListener = throttle(() => {
+            const scrollTop = window.pageYOffset;
+            const windowHeight = window.innerHeight;
+            const documentHeight = document.documentElement.scrollHeight;
+            
+            if (scrollTop + windowHeight >= documentHeight - 100) {
+                loadMoreBusesVirtual(buses);
+            }
+        }, 100);
+        
+        window.addEventListener('scroll', scrollListener);
     }
 }
 
-// Load more buses
+// Throttle function for performance
+function throttle(func, limit) {
+    let inThrottle;
+    return function() {
+        const args = arguments;
+        const context = this;
+        if (!inThrottle) {
+            func.apply(context, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    }
+}
+
+// Load more buses for virtual scrolling
+function loadMoreBusesVirtual(buses) {
+    const currentCount = elements.busGrid.children.length;
+    const nextBuses = buses.slice(currentCount, currentCount + 10);
+    
+    if (nextBuses.length > 0) {
+        const fragment = document.createDocumentFragment();
+        
+        nextBuses.forEach((bus, index) => {
+            const card = createBusCard(bus);
+            if (card) {
+                fragment.appendChild(card);
+            }
+        });
+        
+        elements.busGrid.appendChild(fragment);
+    }
+}
+
+// Optimized load more buses function
 async function loadMoreBuses() {
     if (isLoading) return;
     
@@ -495,13 +635,130 @@ async function loadMoreBuses() {
     loadMoreBtn.textContent = 'Loading...';
     loadMoreBtn.disabled = true;
     
-    // Simulate network delay for smooth loading
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+        const startIndex = (currentPage - 1) * busesPerPage;
+        const endIndex = startIndex + busesPerPage;
+        const newBuses = allBuses.slice(startIndex, endIndex);
+        
+        if (newBuses.length > 0) {
+            const fragment = document.createDocumentFragment();
+            
+            newBuses.forEach((bus, index) => {
+                const card = createBusCard(bus);
+                if (card) {
+                    card.style.animationDelay = `${index * 50}ms`;
+                    fragment.appendChild(card);
+                }
+            });
+            
+            elements.busGrid.appendChild(fragment);
+            currentPage++;
+            displayedBuses += newBuses.length;
+            
+            // Show/hide load more button
+            if (displayedBuses >= allBuses.length) {
+                loadMoreBtn.style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading more buses:', error);
+        showToast('Error loading more buses', 'error');
+    } finally {
+        isLoading = false;
+        loadMoreBtn.textContent = 'Load More Buses';
+        loadMoreBtn.disabled = false;
+    }
+}
+
+// Initialize with optimized loading
+async function initialize() {
+    try {
+        // Show loading state
+        elements.busGrid.innerHTML = `
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading buses...</p>
+            </div>
+        `;
+        
+        const response = await fetch('https://busseva-backend-yhzz.onrender.com/api/buses', {
+            headers: {
+                'Cache-Control': 'max-age=300'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch bus data');
+        }
+        
+        allBuses = await response.json();
+        
+        // Check for URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const busId = urlParams.get('bus');
+        const showModal = urlParams.get('showModal');
+        
+        if (busId && showModal === 'true') {
+            await showBusDetails(busId);
+        }
+        
+        // Display initial buses
+        displayBuses(allBuses);
+        
+        // Add load more button if needed
+        if (allBuses.length > busesPerPage) {
+            loadMoreBtn.style.display = 'block';
+            elements.busGrid.parentNode.appendChild(loadMoreBtn);
+        }
+        
+    } catch (error) {
+        console.error('Error initializing bus list:', error);
+        elements.busGrid.innerHTML = `
+            <div class="error-message">
+                <i class="fas fa-exclamation-circle"></i>
+                <h2>Error loading buses</h2>
+                <p>Please try refreshing the page</p>
+            </div>
+        `;
+    }
+}
+
+// Event listeners with optimized performance
+elements.busSearch.addEventListener('input', (e) => {
+    filterBuses(e.target.value);
+});
+
+elements.closeModal.addEventListener('click', hideModal);
+
+// Close modal when clicking outside
+elements.busModal.addEventListener('click', (e) => {
+    if (e.target === elements.busModal) {
+        hideModal();
+    }
+});
+
+// Close modal with Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && elements.busModal.classList.contains('active')) {
+        hideModal();
+    }
+});
+
+loadMoreBtn.addEventListener('click', loadMoreBuses);
+
+// Initialize when DOM is loaded
+document.addEventListener('DOMContentLoaded', initialize);
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    // Clean up observers
+    imageObserver.disconnect();
     
-    currentPage++;
-    displayBuses();
-    
-    isLoading = false;
-    loadMoreBtn.textContent = 'Load More Buses';
-    loadMoreBtn.disabled = false;
-} 
+    // Clear caches if needed
+    if (busCache.size > 100) {
+        busCache.clear();
+    }
+    if (imageCache.size > 50) {
+        imageCache.clear();
+    }
+}); 

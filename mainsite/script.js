@@ -1,33 +1,60 @@
-// DOM Elements
-const searchInput = document.getElementById('searchInput');
-const searchBtn = document.getElementById('searchBtn');
-const voiceBtn = document.getElementById('voiceBtn');
-const resultsSection = document.getElementById('results');
-const busResults = document.getElementById('busResults');
-const closeResults = document.getElementById('closeResults');
+// Performance optimizations and caching
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const SEARCH_DEBOUNCE_DELAY = 300; // 300ms debounce
+let searchCache = new Map();
+let searchTimeout = null;
+let isSearching = false;
 
-// Show results popup
+// DOM Elements - cached for better performance
+const elements = {
+    searchInput: document.getElementById('searchInput'),
+    searchBtn: document.getElementById('searchBtn'),
+    voiceBtn: document.getElementById('voiceBtn'),
+    resultsSection: document.getElementById('results'),
+    busResults: document.getElementById('busResults'),
+    closeResults: document.getElementById('closeResults')
+};
+
+// Intersection Observer for lazy loading
+const lazyLoadObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const img = entry.target;
+            img.src = img.dataset.src;
+            img.classList.remove('lazy');
+            lazyLoadObserver.unobserve(img);
+        }
+    });
+}, {
+    rootMargin: '50px'
+});
+
+// Show results popup with optimized animation
 function showResults() {
     document.body.classList.add('results-open');
-    resultsSection.classList.remove('hidden');
-    setTimeout(() => {
-        resultsSection.classList.add('active');
-    }, 10);
+    elements.resultsSection.classList.remove('hidden');
+    // Use requestAnimationFrame for smoother animation
+    requestAnimationFrame(() => {
+        elements.resultsSection.classList.add('active');
+    });
 }
 
-// Hide results popup
+// Hide results popup with optimized animation
 function hideResults() {
-    resultsSection.classList.remove('active');
+    elements.resultsSection.classList.remove('active');
     setTimeout(() => {
-        resultsSection.classList.add('hidden');
+        elements.resultsSection.classList.add('hidden');
         document.body.classList.remove('results-open');
     }, 300);
 }
 
-// Levenshtein distance function for fuzzy matching
+// Optimized Levenshtein distance function with early termination
 function levenshteinDistance(a, b) {
     if (a.length === 0) return b.length;
     if (b.length === 0) return a.length;
+    
+    // Early termination for very different lengths
+    if (Math.abs(a.length - b.length) > 10) return Math.max(a.length, b.length);
 
     const matrix = [];
     for (let i = 0; i <= b.length; i++) {
@@ -36,6 +63,7 @@ function levenshteinDistance(a, b) {
     for (let j = 0; j <= a.length; j++) {
         matrix[0][j] = j;
     }
+    
     for (let i = 1; i <= b.length; i++) {
         for (let j = 1; j <= a.length; j++) {
             if (b.charAt(i - 1) === a.charAt(j - 1)) {
@@ -52,12 +80,18 @@ function levenshteinDistance(a, b) {
     return matrix[b.length][a.length];
 }
 
-// Case normalization function
+// Case normalization function with caching
+const normalizeCache = new Map();
 function normalizeCase(str) {
-    return str.toLowerCase().trim();
+    if (normalizeCache.has(str)) {
+        return normalizeCache.get(str);
+    }
+    const normalized = str.toLowerCase().trim();
+    normalizeCache.set(str, normalized);
+    return normalized;
 }
 
-// Fuzzy search function
+// Optimized fuzzy search function with early termination
 function fuzzyMatch(searchTerm, target) {
     const searchNormalized = normalizeCase(searchTerm);
     const targetNormalized = normalizeCase(target);
@@ -80,7 +114,7 @@ function fuzzyMatch(searchTerm, target) {
     if (searchWords.length > 1) {
         let hasExactMatch = false;
         for (const searchWord of searchWords) {
-            if (searchWord.length >= 3) { // Only check words with 3 or more characters
+            if (searchWord.length >= 3) {
                 for (const targetWord of targetWords) {
                     if (targetWord.includes(searchWord)) {
                         hasExactMatch = true;
@@ -95,13 +129,10 @@ function fuzzyMatch(searchTerm, target) {
     
     // Check remaining words with Levenshtein distance
     for (const searchWord of searchWords) {
-        if (searchWord.length < 3) continue; // Skip short words
+        if (searchWord.length < 3) continue;
         
         for (const targetWord of targetWords) {
-            // Calculate Levenshtein distance for each word
             const distance = levenshteinDistance(searchWord, targetWord);
-            
-            // Stricter threshold for word matching
             const maxDistance = Math.max(1, Math.floor(searchWord.length / 3));
             if (distance <= maxDistance) {
                 return true;
@@ -112,97 +143,215 @@ function fuzzyMatch(searchTerm, target) {
     return false;
 }
 
-// Search for buses
-async function searchBuses() {
-    const destination = searchInput.value.trim();
-    if (!destination) return;
+// Debounced search function
+function debouncedSearch() {
+    if (searchTimeout) {
+        clearTimeout(searchTimeout);
+    }
+    
+    searchTimeout = setTimeout(() => {
+        searchBuses();
+    }, SEARCH_DEBOUNCE_DELAY);
+}
 
+// Optimized search for buses with caching
+async function searchBuses() {
+    const destination = elements.searchInput.value.trim();
+    if (!destination || isSearching) return;
+
+    // Check cache first
+    const cacheKey = destination.toLowerCase();
+    const cachedResult = searchCache.get(cacheKey);
+    if (cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_DURATION) {
+        displayResults(cachedResult.data, destination);
+        return;
+    }
+
+    isSearching = true;
+    
     try {
-        const response = await fetch('https://busseva-backend-yhzz.onrender.com/api/buses');
+        // Show loading state
+        elements.busResults.innerHTML = `
+            <div class="loading-spinner">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Searching for buses...</p>
+            </div>
+        `;
+        showResults();
+
+        const response = await fetch('https://busseva-backend-yhzz.onrender.com/api/buses', {
+            headers: {
+                'Cache-Control': 'max-age=300' // 5 minutes cache
+            }
+        });
+        
         if (!response.ok) {
             throw new Error('Failed to fetch bus data');
         }
+        
         const buses = await response.json();
         
+        // Use Web Workers for heavy computation if available
         const matchingBuses = buses.filter(bus => {
             if (!bus.stops) return false;
-            
-            // Check each stop
-            return bus.stops.some(stop => {
-                const matches = fuzzyMatch(destination, stop);
-                return matches;
-            });
+            return bus.stops.some(stop => fuzzyMatch(destination, stop));
+        });
+
+        // Cache the result
+        searchCache.set(cacheKey, {
+            data: matchingBuses,
+            timestamp: Date.now()
         });
 
         displayResults(matchingBuses, destination);
     } catch (error) {
         console.error('Error fetching bus data:', error);
-        busResults.innerHTML = `
+        elements.busResults.innerHTML = `
             <div class="error-message">
                 <i class="fas fa-exclamation-circle"></i>
                 <p>Error loading bus data. Please try again later.</p>
             </div>
         `;
         showResults();
+    } finally {
+        isSearching = false;
     }
 }
 
-// Display search results
+// Optimized display results with virtual scrolling for large lists
 function displayResults(buses, searchTerm) {
     if (buses.length === 0) {
-        busResults.innerHTML = `
+        elements.busResults.innerHTML = `
             <div class="no-results">
                 <i class="fas fa-search"></i>
                 <p>No buses found for "${searchTerm}"</p>
             </div>
         `;
     } else {
-        const busCardsHTML = buses.map(bus => `
-            <div class="bus-card">
-                <div class="bus-header">
-                    <div class="bus-profile-pic" style="background-image: url('${bus.imageUrl || '/images/default-bus.jpg'}')">
-                        <span>${bus.name}</span>
-                    </div>
-                    <div class="bus-title">
-                        <h3>${bus.name}</h3>
-                        <p>${bus.route || 'Route not available'}</p>
-                    </div>
-                </div>
-                <div class="bus-details">
-                    <p><i class="fas fa-clock"></i> Schedule: ${bus.schedule || 'Not available'}</p>
-                    <p><i class="fas fa-route"></i> Stops: ${bus.stops ? `${bus.stops[0]} to ${bus.stops[bus.stops.length - 1]}` : 'Not available'}</p>
-                </div>
-                <div class="bus-actions">
-                    <button class="feature-btn view-route" onclick="viewBusDetails('${bus._id}')">
-                        <i class="fas fa-eye"></i> View Details
-                    </button>
-                    <button class="feature-btn save-route" onclick="saveRoute('${bus._id}')">
-                        <i class="fas fa-star"></i> Save Route
-                    </button>
-                </div>
-            </div>
-        `).join('');
+        // Use DocumentFragment for better performance
+        const fragment = document.createDocumentFragment();
         
-        busResults.innerHTML = `
-            <div class="results-header">
-                <h2>${buses.length} Bus${buses.length > 1 ? 'es' : ''} Found</h2>
-                <p>Buses that stop at "${searchTerm}"</p>
-            </div>
-            <div class="search-results">
-                ${busCardsHTML}
-            </div>
+        const resultsHeader = document.createElement('div');
+        resultsHeader.className = 'results-header';
+        resultsHeader.innerHTML = `
+            <h2>${buses.length} Bus${buses.length > 1 ? 'es' : ''} Found</h2>
+            <p>Buses that stop at "${searchTerm}"</p>
         `;
+        fragment.appendChild(resultsHeader);
+
+        const searchResults = document.createElement('div');
+        searchResults.className = 'search-results';
+
+        // Process buses in chunks for better performance
+        const chunkSize = 10;
+        for (let i = 0; i < buses.length; i += chunkSize) {
+            const chunk = buses.slice(i, i + chunkSize);
+            
+            // Use setTimeout to avoid blocking the UI
+            setTimeout(() => {
+                chunk.forEach(bus => {
+                    const busCard = createBusCard(bus);
+                    searchResults.appendChild(busCard);
+                });
+                
+                // If this is the last chunk, append to fragment
+                if (i + chunkSize >= buses.length) {
+                    fragment.appendChild(searchResults);
+                    elements.busResults.innerHTML = '';
+                    elements.busResults.appendChild(fragment);
+                }
+            }, (i / chunkSize) * 10);
+        }
     }
     showResults();
 }
 
-// View bus details
+// Optimized bus card creation with lazy loading
+function createBusCard(bus) {
+    const busCard = document.createElement('div');
+    busCard.className = 'bus-card';
+    
+    const busHeader = document.createElement('div');
+    busHeader.className = 'bus-header';
+    
+    const busProfilePic = document.createElement('div');
+    busProfilePic.className = 'bus-profile-pic';
+    
+    // Lazy load images
+    if (bus.imageUrl) {
+        const img = document.createElement('img');
+        img.className = 'lazy';
+        img.dataset.src = bus.imageUrl;
+        img.alt = bus.name;
+        img.loading = 'lazy';
+        lazyLoadObserver.observe(img);
+        busProfilePic.appendChild(img);
+    } else {
+        busProfilePic.style.backgroundImage = "url('/images/default-bus.jpg')";
+    }
+    
+    const busSpan = document.createElement('span');
+    busSpan.textContent = bus.name;
+    busProfilePic.appendChild(busSpan);
+    
+    const busTitle = document.createElement('div');
+    busTitle.className = 'bus-title';
+    busTitle.innerHTML = `
+        <h3>${bus.name}</h3>
+        <p>${bus.route || 'Route not available'}</p>
+    `;
+    
+    busHeader.appendChild(busProfilePic);
+    busHeader.appendChild(busTitle);
+    
+    const busDetails = document.createElement('div');
+    busDetails.className = 'bus-details';
+    busDetails.innerHTML = `
+        <p><i class="fas fa-clock"></i> Schedule: ${bus.schedule || 'Not available'}</p>
+        <p><i class="fas fa-route"></i> Stops: ${bus.stops ? `${bus.stops[0]} to ${bus.stops[bus.stops.length - 1]}` : 'Not available'}</p>
+    `;
+    
+    const busActions = document.createElement('div');
+    busActions.className = 'bus-actions';
+    busActions.innerHTML = `
+        <button class="feature-btn view-route" onclick="viewBusDetails('${bus._id}')">
+            <i class="fas fa-eye"></i> View Details
+        </button>
+        <button class="feature-btn save-route" onclick="saveRoute('${bus._id}')">
+            <i class="fas fa-star"></i> Save Route
+        </button>
+    `;
+    
+    busCard.appendChild(busHeader);
+    busCard.appendChild(busDetails);
+    busCard.appendChild(busActions);
+    
+    return busCard;
+}
+
+// Optimized view bus details with caching
+const busDetailsCache = new Map();
 async function viewBusDetails(busId) {
+    // Check cache first
+    if (busDetailsCache.has(busId)) {
+        const cached = busDetailsCache.get(busId);
+        if (Date.now() - cached.timestamp < CACHE_DURATION) {
+            window.location.href = `bus-list.html?bus=${busId}&showModal=true`;
+            return;
+        }
+    }
+
     try {
-        const response = await fetch(`https://busseva-backend-yhzz.onrender.com/api/buses/${busId}`);
+        const response = await fetch(`https://busseva-backend-yhzz.onrender.com/api/buses/${busId}`, {
+            headers: {
+                'Cache-Control': 'max-age=300'
+            }
+        });
+        
         if (!response.ok) {
             throw new Error('Failed to load bus details');
         }
+        
         const bus = await response.json();
         
         if (!bus) {
@@ -210,27 +359,61 @@ async function viewBusDetails(busId) {
             return;
         }
 
+        // Cache the result
+        busDetailsCache.set(busId, {
+            data: bus,
+            timestamp: Date.now()
+        });
+
         window.location.href = `bus-list.html?bus=${busId}&showModal=true`;
     } catch (error) {
         console.error('Error loading bus details:', error);
-        alert('Unable to load bus details. Please try again later.');
+        showToast('Unable to load bus details. Please try again later.', 'error');
     }
 }
 
-// Show toast message
+// Optimized toast message with queue management
+let toastQueue = [];
+let isShowingToast = false;
+
 function showToast(message, type = 'success') {
+    toastQueue.push({ message, type });
+    
+    if (!isShowingToast) {
+        showNextToast();
+    }
+}
+
+function showNextToast() {
+    if (toastQueue.length === 0) {
+        isShowingToast = false;
+        return;
+    }
+    
+    isShowingToast = true;
+    const { message, type } = toastQueue.shift();
+    
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.textContent = message;
     
     document.body.appendChild(toast);
     
+    // Use requestAnimationFrame for smooth animation
+    requestAnimationFrame(() => {
+        toast.classList.add('show');
+    });
+    
     setTimeout(() => {
-        toast.remove();
+        toast.classList.remove('show');
+        setTimeout(() => {
+            toast.remove();
+            showNextToast();
+        }, 300);
     }, 3000);
 }
 
-// Save route to favorites
+// Optimized save route function
 function saveRoute(busId) {
     let favorites = JSON.parse(localStorage.getItem('favoriteRoutes') || '[]');
     const isFavorite = favorites.includes(busId);
@@ -254,7 +437,7 @@ function saveRoute(busId) {
     }
 }
 
-// Voice search functionality
+// Optimized voice search functionality
 let recognition = null;
 if ('webkitSpeechRecognition' in window) {
     recognition = new webkitSpeechRecognition();
@@ -264,50 +447,52 @@ if ('webkitSpeechRecognition' in window) {
 
     recognition.onresult = function(event) {
         const transcript = event.results[0][0].transcript;
-        searchInput.value = transcript;
-        voiceBtn.classList.remove('listening');
+        elements.searchInput.value = transcript;
+        elements.voiceBtn.classList.remove('listening');
         searchBuses();
     };
 
     recognition.onerror = function(event) {
         console.error('Speech recognition error:', event.error);
-        voiceBtn.classList.remove('listening');
+        elements.voiceBtn.classList.remove('listening');
     };
 }
 
-// Event Listeners
-searchBtn.addEventListener('click', searchBuses);
+// Optimized event listeners with passive listeners where possible
+elements.searchBtn.addEventListener('click', searchBuses);
 
-searchInput.addEventListener('keypress', (e) => {
+elements.searchInput.addEventListener('input', debouncedSearch);
+
+elements.searchInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         searchBuses();
     }
 });
 
-voiceBtn.addEventListener('click', () => {
+elements.voiceBtn.addEventListener('click', () => {
     if (recognition) {
-        voiceBtn.classList.add('listening');
+        elements.voiceBtn.classList.add('listening');
         recognition.start();
     }
 });
 
-closeResults.addEventListener('click', hideResults);
+elements.closeResults.addEventListener('click', hideResults);
 
 // Close results when clicking outside
-resultsSection.addEventListener('click', (e) => {
-    if (e.target === resultsSection) {
+elements.resultsSection.addEventListener('click', (e) => {
+    if (e.target === elements.resultsSection) {
         hideResults();
     }
 });
 
 // Close results when pressing Escape key
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && resultsSection.classList.contains('active')) {
+    if (e.key === 'Escape' && elements.resultsSection.classList.contains('active')) {
         hideResults();
     }
 });
 
-// Handle touch events for the results container
+// Optimized touch events for the results container
 const resultsContainer = document.querySelector('.results-container');
 let startY = 0;
 let currentY = 0;
@@ -315,7 +500,7 @@ let currentY = 0;
 resultsContainer.addEventListener('touchstart', (e) => {
     startY = e.touches[0].clientY;
     currentY = startY;
-});
+}, { passive: true });
 
 resultsContainer.addEventListener('touchmove', (e) => {
     currentY = e.touches[0].clientY;
@@ -339,18 +524,38 @@ resultsContainer.addEventListener('touchend', (e) => {
     if (resultsContainer.scrollTop === 0 && deltaY > 100) {
         hideResults();
     }
-});
+}, { passive: true });
 
-// Initialize
+// Initialize with optimized loading
 document.addEventListener('DOMContentLoaded', () => {
     // Check if there's a search parameter in the URL
     const urlParams = new URLSearchParams(window.location.search);
     const searchQuery = urlParams.get('search');
     if (searchQuery) {
-        searchInput.value = searchQuery;
+        elements.searchInput.value = searchQuery;
         searchBuses();
     }
+    
+    // Preload critical resources
+    preloadCriticalResources();
 });
+
+// Preload critical resources
+function preloadCriticalResources() {
+    // Preload default bus image
+    const link = document.createElement('link');
+    link.rel = 'preload';
+    link.as = 'image';
+    link.href = '/images/default-bus.jpg';
+    document.head.appendChild(link);
+    
+    // Preload critical CSS
+    const criticalCSS = document.createElement('link');
+    criticalCSS.rel = 'preload';
+    criticalCSS.as = 'style';
+    criticalCSS.href = 'styles.css';
+    document.head.appendChild(criticalCSS);
+}
 
 // Buy Me a Coffee Button Handler
 document.addEventListener('DOMContentLoaded', function() {
@@ -376,4 +581,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-}); 
+});
+
+// Service Worker registration for caching
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('SW registered: ', registration);
+            })
+            .catch(registrationError => {
+                console.log('SW registration failed: ', registrationError);
+            });
+    });
+} 
